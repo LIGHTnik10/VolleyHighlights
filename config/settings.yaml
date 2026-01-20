@@ -1,0 +1,63 @@
+# Volleyball Rally Detection Configuration
+
+ball_detection:
+  # YOLO model to use (n=nano, s=small, m=medium, l=large, x=xlarge)
+  # nano is fastest, recommended for 3060 TI
+  model: "yolov8n.pt"
+
+  # Minimum confidence threshold for ball detection
+  confidence_threshold: 0.3
+
+  # Classes to detect (0 = sports ball in COCO dataset)
+  # We'll primarily look for "sports ball" class
+  target_classes: [32]  # 32 = sports ball in COCO
+
+  # Image size for inference (larger = more accurate but slower)
+  imgsz: 640
+
+  # Use GPU if available
+  device: "cuda"
+
+tracking:
+  # Maximum frames to keep tracking a lost ball
+  max_frames_to_skip: 30
+
+  # Minimum track length to consider valid
+  min_track_length: 5
+
+rally_detection:
+  # Seconds without ball before rally is considered ended
+  ball_missing_timeout: 4.0
+
+  # Seconds to keep after rally ends (capture reactions)
+  post_rally_buffer: 3.0
+
+  # Seconds before ball appears to include (anticipation)
+  pre_rally_buffer: 1.0
+
+  # Ground level as percentage of frame height (0.85 = 85% from top)
+  ground_level_threshold: 0.85
+
+  # Minimum rally duration to keep (filter out false detections)
+  min_rally_duration: 2.0
+
+video:
+  # Output settings
+  output_format: "mp4"
+  output_codec: "libx264"
+  output_fps: null  # null = same as input
+
+  # Processing
+  batch_size: 1  # Frames to process at once
+  skip_frames: 0  # Process every Nth frame (0 = all frames)
+
+debug:
+  # Save annotated frames for debugging
+  save_debug_frames: false
+  debug_output_dir: "debug_output"
+
+  # Show live preview while processing
+  show_preview: false
+
+  # Verbose logging
+  verbose: true

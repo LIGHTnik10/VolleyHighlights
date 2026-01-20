@@ -1,0 +1,16 @@
+# Core dependencies
+ultralytics>=8.0.0          # YOLOv8 for ball detection
+opencv-python>=4.8.0        # Video I/O and image processing
+numpy>=1.24.0               # Array operations
+
+# Tracking and visualization
+supervision>=0.16.0         # Object tracking utilities
+
+# Video export
+moviepy>=1.0.3              # Video editing and export
+
+# Configuration
+pyyaml>=6.0                 # YAML config parsing
+
+# Optional: Progress bars
+tqdm>=4.65.0                # Progress bars for long videos
