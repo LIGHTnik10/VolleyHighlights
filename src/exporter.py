@@ -90,7 +90,7 @@ class HighlightExporter:
 
                 print(f"  [{i + 1}/{len(rallies)}] Extracting {rally.time_range}")
 
-                # Use ffmpeg to extract clip (fast, no re-encoding)
+                # Extract and re-encode each clip for better quality and compatibility
                 cmd = [
                     ffmpeg,
                     "-y",  # Overwrite
@@ -100,8 +100,16 @@ class HighlightExporter:
                     str(video_path),  # Input
                     "-t",
                     str(rally.duration),  # Duration
-                    "-c",
-                    "copy",  # Copy streams (no re-encode, very fast)
+                    "-c:v",
+                    self.codec,
+                    "-crf",
+                    str(self.crf),
+                    "-preset",
+                    "fast",
+                    "-c:a",
+                    "aac" if self.audio else "none",
+                    "-b:a",
+                    "192k" if self.audio else "0",
                     "-avoid_negative_ts",
                     "make_zero",
                     str(clip_path),
@@ -114,26 +122,7 @@ class HighlightExporter:
                 )
 
                 if result.returncode != 0:
-                    print(f"    Warning: ffmpeg returned {result.returncode}")
-                    # Try with re-encoding if copy fails
-                    cmd = [
-                        ffmpeg,
-                        "-y",
-                        "-ss",
-                        str(rally.start_time),
-                        "-i",
-                        str(video_path),
-                        "-t",
-                        str(rally.duration),
-                        "-c:v",
-                        self.codec,
-                        "-crf",
-                        str(self.crf),
-                        "-c:a",
-                        "aac" if self.audio else "none",
-                        str(clip_path),
-                    ]
-                    subprocess.run(cmd, capture_output=True)
+                    print(f"    Warning: Failed to extract clip {i + 1}")
 
             # Create concat file list
             concat_file = temp_path / "concat.txt"
@@ -143,9 +132,11 @@ class HighlightExporter:
                     escaped_path = str(clip_path).replace("'", "'\\''")
                     f.write(f"file '{escaped_path}'\n")
 
-            # Concatenate all clips
+            # Concatenate all clips with re-encoding for smooth transitions
             print(f"\nConcatenating {len(clip_paths)} clips...")
+            print("  Re-encoding for smooth playback (this may take a moment)...")
 
+            # Always re-encode to avoid frame alignment issues
             concat_cmd = [
                 ffmpeg,
                 "-y",
@@ -155,11 +146,24 @@ class HighlightExporter:
                 "0",
                 "-i",
                 str(concat_file),
-                "-c",
-                "copy",  # Try copy first
+                "-c:v",
+                self.codec,
+                "-crf",
+                str(self.crf),
+                "-preset",
+                "fast",  # Balance between speed and quality
+                "-c:a",
+                "aac" if self.audio else "none",
+                "-b:a",
+                "192k" if self.audio else "0",
+                "-movflags",
+                "+faststart",  # Enable fast start for web playback
+                "-vsync",
+                "cfr",  # Constant frame rate to prevent duplicate/dropped frames
                 str(self.output_path),
             ]
 
+            # Run with minimal output (hide verbose ffmpeg logs)
             result = subprocess.run(
                 concat_cmd,
                 capture_output=True,
@@ -167,42 +171,8 @@ class HighlightExporter:
             )
 
             if result.returncode != 0:
-                print("  Copy concat failed, re-encoding...")
-                # Fall back to re-encoding if copy fails
-                concat_cmd = [
-                    ffmpeg,
-                    "-y",
-                    "-f",
-                    "concat",
-                    "-safe",
-                    "0",
-                    "-i",
-                    str(concat_file),
-                    "-c:v",
-                    self.codec,
-                    "-crf",
-                    str(self.crf),
-                    "-c:a",
-                    "aac" if self.audio else "none",
-                    "-movflags",
-                    "+faststart",
-                    str(self.output_path),
-                ]
-
-                # Run with progress output
-                process = subprocess.Popen(
-                    concat_cmd,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
-                    text=True,
-                )
-
-                for line in process.stdout:
-                    if "frame=" in line or "time=" in line:
-                        print(f"\r  {line.strip()}", end="", flush=True)
-
-                process.wait()
-                print()  # New line after progress
+                print(f"\nError during concatenation: {result.stderr}")
+                raise RuntimeError("Failed to concatenate clips")
 
         # Verify output
         if self.output_path.exists():

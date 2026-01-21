@@ -6,7 +6,9 @@ ball_detection:
   model: "yolov8n.pt"
 
   # Minimum confidence threshold for ball detection
-  confidence_threshold: 0.3
+  # Lower = more detections (may include false positives)
+  # Higher = fewer detections (may miss some balls)
+  confidence_threshold: 0.2
 
   # Classes to detect (0 = sports ball in COCO dataset)
   # We'll primarily look for "sports ball" class
@@ -27,19 +29,21 @@ tracking:
 
 rally_detection:
   # Seconds without ball before rally is considered ended
-  ball_missing_timeout: 4.0
+  # Increase this to allow for brief moments when ball isn't visible
+  ball_missing_timeout: 5.0
 
-  # Seconds to keep after rally ends (capture reactions)
-  post_rally_buffer: 3.0
+  # Seconds to keep after rally ends (capture reactions, celebrations)
+  post_rally_buffer: 4.0
 
-  # Seconds before ball appears to include (anticipation)
-  pre_rally_buffer: 1.0
+  # Seconds before ball appears to include (anticipation, serve setup)
+  pre_rally_buffer: 2.0
 
   # Ground level as percentage of frame height (0.85 = 85% from top)
   ground_level_threshold: 0.85
 
   # Minimum rally duration to keep (filter out false detections)
-  min_rally_duration: 2.0
+  # Lower this to capture shorter plays
+  min_rally_duration: 1.5
 
 video:
   # Output settings

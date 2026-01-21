@@ -26,7 +26,7 @@ import yaml
 from src.detector import BallDetector, VideoProcessor
 from src.exporter import HighlightExporter
 from src.rally import RallyDetector
-from tqdm import tqdm
+from src.progress import ProgressReporter
 
 
 def load_config(config_path: str = "config/settings.yaml") -> dict:
@@ -164,21 +164,24 @@ def analyze_video(video_path: str, config: dict):
     total_detections = 0
     detection_log = []
 
-    for frame_num, frame in tqdm(video, total=video.frame_count, desc="Processing"):
-        detections = detector.detect(frame, frame_num)
+    with ProgressReporter(video.frame_count, "Analyzing", update_interval=30) as progress:
+        for frame_num, frame in video:
+            detections = detector.detect(frame, frame_num)
 
-        if detections:
-            frames_with_ball += 1
-            total_detections += len(detections)
-            detection_log.append(
-                {
-                    "frame": frame_num,
-                    "time": frame_num / video.fps,
-                    "detections": len(detections),
-                    "best_conf": detections[0].confidence,
-                    "best_pos": (detections[0].x, detections[0].y),
-                }
-            )
+            if detections:
+                frames_with_ball += 1
+                total_detections += len(detections)
+                detection_log.append(
+                    {
+                        "frame": frame_num,
+                        "time": frame_num / video.fps,
+                        "detections": len(detections),
+                        "best_conf": detections[0].confidence,
+                        "best_pos": (detections[0].x, detections[0].y),
+                    }
+                )
+
+            progress.update()
 
     # Calculate statistics
     detection_rate = frames_with_ball / video.frame_count * 100
@@ -225,8 +228,8 @@ def detect_rallies(video_path: str, config: dict):
     # Initialize detector
     det_config = config.get("ball_detection", {})
     detector = BallDetector(
-        model_path=det_config.get("model", "yolov8s.pt"),
-        confidence_threshold=det_config.get("confidence_threshold", 0.1),
+        model_path=det_config.get("model", "yolov8n.pt"),
+        confidence_threshold=det_config.get("confidence_threshold", 0.25),
         target_classes=det_config.get("target_classes", [32]),
         device=det_config.get("device", "cuda"),
         imgsz=det_config.get("imgsz", 640),
@@ -236,33 +239,37 @@ def detect_rallies(video_path: str, config: dict):
     rally_config = config.get("rally_detection", {})
     rally_detector = RallyDetector(
         fps=video.fps,
-        ball_missing_timeout=rally_config.get("ball_missing_timeout", 2.0),
+        ball_missing_timeout=rally_config.get("ball_missing_timeout", 4.0),
         min_rally_duration=rally_config.get("min_rally_duration", 2.0),
         pre_rally_buffer=rally_config.get("pre_rally_buffer", 1.0),
-        post_rally_buffer=rally_config.get("post_rally_buffer", 2.0),
+        post_rally_buffer=rally_config.get("post_rally_buffer", 3.0),
     )
 
     # Process all frames incrementally (memory efficient)
     print("\nProcessing video for rally detection...\n")
 
     error_count = 0
-    for frame_num, frame in tqdm(video, total=video.frame_count, desc="Detecting"):
-        try:
-            detections = detector.detect(frame, frame_num)
-            # Process frame incrementally - doesn't store all detections in memory
-            rally_detector.process_frame(frame_num, detections, video.frame_count)
-        except Exception as e:
-            error_count += 1
-            if error_count <= 5:  # Only log first 5 errors
-                print(f"\nWarning: Error at frame {frame_num}: {e}")
-            # Continue processing other frames
-            continue
+    with ProgressReporter(video.frame_count, "Detecting rallies", update_interval=30) as progress:
+        for frame_num, frame in video:
+            try:
+                detections = detector.detect(frame, frame_num)
+                # Process frame incrementally - doesn't store all detections in memory
+                rally_detector.process_frame(frame_num, detections, video.frame_count)
+            except Exception as e:
+                error_count += 1
+                if error_count <= 5:  # Only log first 5 errors
+                    print(f"\nWarning: Error at frame {frame_num}: {e}")
+                # Continue processing other frames
+                progress.update()
+                continue
 
-        # Periodic memory cleanup every 5000 frames
-        if frame_num > 0 and frame_num % 5000 == 0:
-            gc.collect()
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
+            # Periodic memory cleanup every 5000 frames
+            if frame_num > 0 and frame_num % 5000 == 0:
+                gc.collect()
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+
+            progress.update()
 
     if error_count > 0:
         print(f"\nTotal frames with errors: {error_count}")
