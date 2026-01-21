@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Model files (large, can be downloaded)
+*.pt
+*.pth
+
+# Output videos and logs
+*.mp4
+*.MOV
+*.AVI
+*process*.txt
+*rally*.txt
+*analyze*.txt
+
+# Debug output
+debug_output/
+rallies/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.xlsx
+Untitled*

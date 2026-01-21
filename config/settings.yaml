@@ -10,7 +10,7 @@ ball_detection:
 
   # Classes to detect (0 = sports ball in COCO dataset)
   # We'll primarily look for "sports ball" class
-  target_classes: [32]  # 32 = sports ball in COCO
+  target_classes: [32] # 32 = sports ball in COCO
 
   # Image size for inference (larger = more accurate but slower)
   imgsz: 640
@@ -45,11 +45,11 @@ video:
   # Output settings
   output_format: "mp4"
   output_codec: "libx264"
-  output_fps: null  # null = same as input
+  output_fps: null # null = same as input
 
   # Processing
-  batch_size: 1  # Frames to process at once
-  skip_frames: 0  # Process every Nth frame (0 = all frames)
+  batch_size: 1 # Frames to process at once
+  skip_frames: 0 # Process every Nth frame (0 = all frames)
 
 debug:
   # Save annotated frames for debugging
