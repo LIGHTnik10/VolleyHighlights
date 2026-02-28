@@ -5,6 +5,7 @@ Automatic volleyball rally detection and highlight generation using computer vis
 ## Features
 
 - Detects volleyballs in video using YOLOv8
+- Temporal tracking filter to stabilize detections across camera-angle changes
 - Identifies rally start/end based on ball visibility
 - Extracts highlight clips automatically
 - GPU-accelerated processing
@@ -75,6 +76,10 @@ Edit `config/settings.yaml` to adjust:
 - `rally_detection.ball_missing_timeout`: Seconds without ball before rally ends
 - `rally_detection.post_rally_buffer`: Seconds to keep after rally ends
 
+- `tracking.max_jump_ratio`: Reject detections that jump too far between frames
+- `tracking.recovery_confidence`: Confidence required to re-lock ball after short losses
+- `tracking.history_size`: Number of prior points used to predict trajectory
+
 ## Project Structure
 
 ```
@@ -114,6 +119,12 @@ VolleyHighlights/
 ### Slow processing
 - Ensure GPU is being used (check output for "Using GPU")
 - Reduce `imgsz` for faster processing
+
+### Missed or incorrect highlights with camera angle changes
+- Keep `tracking.max_jump_ratio` around `0.10-0.16` (smaller = stricter trajectory consistency)
+- Increase `rally_detection.ball_missing_timeout` to allow brief occlusions on angle switches
+- Raise `tracking.recovery_confidence` if spectators/players are mistaken for the ball
+- If still unstable, fine-tune YOLO on your court/camera setup for best results
 
 ## License
 
