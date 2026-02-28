@@ -14,6 +14,7 @@ import yaml
 from src.detector import BallDetector, VideoProcessor
 from src.exporter import HighlightExporter
 from src.rally import Rally, RallyDetector
+from src.tracking import BallTrackFilter, TrackingConfig
 from tqdm import tqdm
 
 
@@ -56,6 +57,20 @@ def process_video(video_path: str, output_path: str = "highlights.mp4"):
         post_rally_buffer=rally_config.get("post_rally_buffer", 2.0),
     )
 
+    tracking_config = config.get("tracking", {})
+    track_filter = BallTrackFilter(
+        frame_width=video.width,
+        frame_height=video.height,
+        config=TrackingConfig(
+            max_jump_ratio=tracking_config.get("max_jump_ratio", 0.14),
+            confidence_weight=tracking_config.get("confidence_weight", 0.7),
+            distance_weight=tracking_config.get("distance_weight", 0.3),
+            recovery_confidence=tracking_config.get("recovery_confidence", 0.45),
+            max_lost_frames=tracking_config.get("max_lost_frames", 12),
+            history_size=tracking_config.get("history_size", 6),
+        ),
+    )
+
     print("\nProcessing video for rally detection...\n")
 
     error_count = 0
@@ -64,6 +79,7 @@ def process_video(video_path: str, output_path: str = "highlights.mp4"):
     for frame_num, frame in tqdm(video, total=video.frame_count, desc="Detecting"):
         try:
             detections = detector.detect(frame, frame_num)
+            detections = track_filter.filter(detections)
             rally_detector.process_frame(frame_num, detections, video.frame_count)
         except Exception as e:
             error_count += 1

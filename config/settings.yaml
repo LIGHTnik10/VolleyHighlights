@@ -21,11 +21,22 @@ ball_detection:
   device: "cuda"
 
 tracking:
-  # Maximum frames to keep tracking a lost ball
-  max_frames_to_skip: 30
+  # Max movement between frames as ratio of frame diagonal
+  # Lower values reject angle-jump false positives
+  max_jump_ratio: 0.14
 
-  # Minimum track length to consider valid
-  min_track_length: 5
+  # Score weighting for temporal filtering
+  confidence_weight: 0.7
+  distance_weight: 0.3
+
+  # Minimum confidence required to recover after missed frames
+  recovery_confidence: 0.45
+
+  # How long to keep track state when ball is missing
+  max_lost_frames: 12
+
+  # Number of previous detections used for motion prediction
+  history_size: 6
 
 rally_detection:
   # Seconds without ball before rally is considered ended

@@ -27,6 +27,7 @@ from src.detector import BallDetector, VideoProcessor
 from src.exporter import HighlightExporter
 from src.rally import RallyDetector
 from src.progress import ProgressReporter
+from src.tracking import BallTrackFilter, TrackingConfig
 
 
 def load_config(config_path: str = "config/settings.yaml") -> dict:
@@ -245,6 +246,21 @@ def detect_rallies(video_path: str, config: dict):
         post_rally_buffer=rally_config.get("post_rally_buffer", 3.0),
     )
 
+    # Temporal filtering stabilizes detections when camera angle changes.
+    tracking_config = config.get("tracking", {})
+    track_filter = BallTrackFilter(
+        frame_width=video.width,
+        frame_height=video.height,
+        config=TrackingConfig(
+            max_jump_ratio=tracking_config.get("max_jump_ratio", 0.14),
+            confidence_weight=tracking_config.get("confidence_weight", 0.7),
+            distance_weight=tracking_config.get("distance_weight", 0.3),
+            recovery_confidence=tracking_config.get("recovery_confidence", 0.45),
+            max_lost_frames=tracking_config.get("max_lost_frames", 12),
+            history_size=tracking_config.get("history_size", 6),
+        ),
+    )
+
     # Process all frames incrementally (memory efficient)
     print("\nProcessing video for rally detection...\n")
 
@@ -253,6 +269,7 @@ def detect_rallies(video_path: str, config: dict):
         for frame_num, frame in video:
             try:
                 detections = detector.detect(frame, frame_num)
+                detections = track_filter.filter(detections)
                 # Process frame incrementally - doesn't store all detections in memory
                 rally_detector.process_frame(frame_num, detections, video.frame_count)
             except Exception as e:
